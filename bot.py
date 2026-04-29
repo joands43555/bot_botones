@@ -236,7 +236,6 @@ def main():
     conv = ConversationHandler(
         entry_points=[
             CommandHandler("senal", senal_inicio),
-            CommandHandler("señal", senal_inicio),
         ],
         states={
             ESPERANDO_VIDEO:   [MessageHandler(filters.VIDEO | filters.PHOTO | filters.ANIMATION, senal_recibir_video)],
