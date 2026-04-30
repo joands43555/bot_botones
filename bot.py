@@ -13,13 +13,26 @@ from config import (
     BOT_TOKEN, ADMIN_IDS, TUTORIAL_URL, PAYPAL_URL,
     VIP_CHANNEL_LINK, STARS_PRICE, WELCOME_TEXT,
     SIGNAL_FOOTER, BOT_NAME, BTN_OPCION1, BTN_OPCION2,
-    CHANNEL_IDS,
+    CHANNEL_IDS, BOT_USERNAME,
 )
 
 logging.basicConfig(format="%(asctime)s | %(levelname)s | %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 (ESPERANDO_VIDEO, ESPERANDO_LINK1, ESPERANDO_LINK2, ESPERANDO_CAPTION) = range(4)
+
+
+async def send_stars_invoice(chat_id, context):
+    """Envía la factura de Stars directamente."""
+    await context.bot.send_invoice(
+        chat_id=chat_id,
+        title=f"⭐ Acceso VIP — {BOT_NAME}",
+        description="Acceso ilimitado al canal VIP. Pago seguro con Telegram Stars. ✅",
+        payload="vip_stars_payment",
+        currency="XTR",
+        prices=[LabeledPrice("VIP Access", STARS_PRICE)],
+        provider_token="",
+    )
 
 
 def build_keyboard(link1: str, link2: str) -> InlineKeyboardMarkup:
@@ -29,11 +42,12 @@ def build_keyboard(link1: str, link2: str) -> InlineKeyboardMarkup:
             InlineKeyboardButton(f"👉 {BTN_OPCION2}", url=link2),
         ],
         [
-            InlineKeyboardButton("💎 VIP via PayPal",    url=PAYPAL_URL),
-            InlineKeyboardButton("⭐ VIP via Estrellas",  callback_data="buy_stars"),
+            InlineKeyboardButton("💎 VIP via PayPal",   url=PAYPAL_URL),
+            # Botón que abre el bot y lanza el pago automáticamente
+            InlineKeyboardButton("⭐ VIP via Estrellas", url=f"https://t.me/{BOT_USERNAME}?start=vip_stars"),
         ],
         [
-            InlineKeyboardButton("📋 TUTORIAL",           url=TUTORIAL_URL),
+            InlineKeyboardButton("📋 TUTORIAL", url=TUTORIAL_URL),
         ],
     ])
 
@@ -41,16 +55,21 @@ def build_keyboard(link1: str, link2: str) -> InlineKeyboardMarkup:
 def main_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("💎 VIP via PayPal",    url=PAYPAL_URL),
-            InlineKeyboardButton("⭐ VIP via Estrellas",  callback_data="buy_stars"),
+            InlineKeyboardButton("💎 VIP via PayPal",   url=PAYPAL_URL),
+            InlineKeyboardButton("⭐ VIP via Estrellas", url=f"https://t.me/{BOT_USERNAME}?start=vip_stars"),
         ],
         [
-            InlineKeyboardButton("📋 TUTORIAL",           url=TUTORIAL_URL),
+            InlineKeyboardButton("📋 TUTORIAL", url=TUTORIAL_URL),
         ],
     ])
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Si viene con ?start=vip_stars → manda la factura automáticamente
+    if context.args and context.args[0] == "vip_stars":
+        await send_stars_invoice(update.effective_user.id, context)
+        return
+
     await update.message.reply_text(WELCOME_TEXT, reply_markup=main_keyboard(), parse_mode="HTML")
 
 
@@ -96,7 +115,7 @@ async def senal_recibir_video(update: Update, context: ContextTypes.DEFAULT_TYPE
     await msg.reply_text(
         f"✅ Video recibido.\n\n"
         f"🔗 <b>Paso 2/4 — Link {BTN_OPCION1}</b>\n\n"
-        f"Pega el link de Linkvertise para el botón <b>{BTN_OPCION1}</b>:\n\n/cancelar para salir.",
+        f"Pega el link de Linkvertise para <b>{BTN_OPCION1}</b>:\n\n/cancelar para salir.",
         parse_mode="HTML",
     )
     return ESPERANDO_LINK1
@@ -105,14 +124,14 @@ async def senal_recibir_video(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def senal_recibir_link1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     link = update.message.text.strip()
     if not link.startswith("http"):
-        await update.message.reply_text("❌ Link inválido. Debe empezar con https://\n/cancelar para salir.")
+        await update.message.reply_text("❌ Link inválido.\n/cancelar para salir.")
         return ESPERANDO_LINK1
 
     context.user_data["link1"] = link
     await update.message.reply_text(
         f"✅ Link 1 guardado.\n\n"
         f"🔗 <b>Paso 3/4 — Link {BTN_OPCION2}</b>\n\n"
-        f"Pega el link de Linkvertise para el botón <b>{BTN_OPCION2}</b>:\n\n/cancelar para salir.",
+        f"Pega el link de Linkvertise para <b>{BTN_OPCION2}</b>:\n\n/cancelar para salir.",
         parse_mode="HTML",
     )
     return ESPERANDO_LINK2
@@ -167,10 +186,9 @@ async def senal_publicar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             logger.error(f"❌ Error publicando en {channel_id}: {e}")
 
     await update.message.reply_text(
-        f"✅ <b>Publicado en {publicados}/{len(CHANNEL_IDS)} canales</b> con todos los botones.",
+        f"✅ <b>Publicado en {publicados}/{len(CHANNEL_IDS)} canales.</b>",
         parse_mode="HTML"
     )
-
     context.user_data.clear()
     return ConversationHandler.END
 
@@ -181,22 +199,9 @@ async def cancelar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 
 
-# ── Pago con Stars ─────────────────────────────────────────
-async def buy_stars_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    await context.bot.send_invoice(
-        chat_id=query.from_user.id,
-        title=f"⭐ Acceso VIP — {BOT_NAME}",
-        description="Acceso ilimitado al canal VIP. Pago seguro con Telegram Stars. ✅",
-        payload="vip_stars_payment",
-        currency="XTR",
-        prices=[LabeledPrice("VIP Access", STARS_PRICE)],
-        provider_token="",
-    )
-
 async def pre_checkout(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.pre_checkout_query.answer(ok=True)
+
 
 async def successful_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
@@ -232,7 +237,6 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("menu",  menu))
     app.add_handler(CommandHandler("ayuda", ayuda))
-    app.add_handler(CallbackQueryHandler(buy_stars_callback, pattern="^buy_stars$"))
     app.add_handler(PreCheckoutQueryHandler(pre_checkout))
     app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment))
 
