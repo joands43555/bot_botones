@@ -318,7 +318,8 @@ def main():
     app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment))
 
     logger.info(f"🤖 {BOT_NAME} iniciado.")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    import asyncio
+    asyncio.run(app.run_polling(allowed_updates=Update.ALL_TYPES))
 
 
 if __name__ == "__main__":
