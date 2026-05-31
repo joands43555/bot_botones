@@ -3,6 +3,8 @@ Bot de Telegram — Publica video con botones directo en canales
 """
 
 import logging
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
@@ -286,6 +288,18 @@ async def ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text, parse_mode="HTML")
 
 
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"OK")
+    def log_message(self, *args):
+        pass
+
+def run_health_server():
+    server = HTTPServer(("0.0.0.0", 8080), HealthHandler)
+    server.serve_forever()
+
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
 
@@ -317,6 +331,7 @@ def main():
     app.add_handler(PreCheckoutQueryHandler(pre_checkout))
     app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment))
 
+    threading.Thread(target=run_health_server, daemon=True).start()
     logger.info(f"🤖 {BOT_NAME} iniciado.")
     import asyncio
     asyncio.run(app.run_polling(allowed_updates=Update.ALL_TYPES))
