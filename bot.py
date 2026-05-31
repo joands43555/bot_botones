@@ -1,3 +1,7 @@
+"""
+Bot de Telegram — Publica video con botones directo en canales
+"""
+
 import logging
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -21,7 +25,6 @@ logger = logging.getLogger(__name__)
 (AN_VIDEO, AN_CAPTION) = range(4, 6)
 
 
-# ── Health check para Render ───────────────────────────────
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -35,8 +38,7 @@ def run_health_server():
     server.serve_forever()
 
 
-# ── Teclados ───────────────────────────────────────────────
-def build_keyboard(link1, link2):
+def build_keyboard(link1: str, link2: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(f"👉 {BTN_OPCION1}", url=link1),
@@ -46,10 +48,12 @@ def build_keyboard(link1, link2):
             InlineKeyboardButton("💎 VIP via PayPal",    url=PAYPAL_URL),
             InlineKeyboardButton("⭐ VIP via Estrellas",  url=f"https://t.me/{BOT_USERNAME}?start=vip_stars"),
         ],
-        [InlineKeyboardButton("📋 TUTORIAL", url=TUTORIAL_URL)],
+        [
+            InlineKeyboardButton("📋 TUTORIAL", url=TUTORIAL_URL),
+        ],
     ])
 
-def vip_keyboard():
+def vip_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton("💎 VIP via PayPal",    url=PAYPAL_URL),
@@ -57,13 +61,15 @@ def vip_keyboard():
         ],
     ])
 
-def main_keyboard():
+def main_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton("💎 VIP via PayPal",    url=PAYPAL_URL),
             InlineKeyboardButton("⭐ VIP via Estrellas",  url=f"https://t.me/{BOT_USERNAME}?start=vip_stars"),
         ],
-        [InlineKeyboardButton("📋 TUTORIAL", url=TUTORIAL_URL)],
+        [
+            InlineKeyboardButton("📋 TUTORIAL", url=TUTORIAL_URL),
+        ],
     ])
 
 
@@ -88,39 +94,41 @@ async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"<b>📌 {BOT_NAME}</b>\nElige una opción:", reply_markup=main_keyboard(), parse_mode="HTML")
 
 
-# ── /senal ─────────────────────────────────────────────────
-async def senal_inicio(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def senal_inicio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.effective_user.id not in ADMIN_IDS:
         await update.message.reply_text("⛔ Sin permiso.")
         return ConversationHandler.END
     context.user_data.clear()
-    await update.message.reply_text("🎬 <b>Paso 1/4 — Video</b>\n\nEnvía el video.\n\n/cancelar para salir.", parse_mode="HTML")
+    await update.message.reply_text("🎬 <b>Paso 1/4 — Video</b>\n\nEnvía el video que quieres publicar.\n\n/cancelar para salir.", parse_mode="HTML")
     return ESPERANDO_VIDEO
 
-async def senal_recibir_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def senal_recibir_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     msg = update.message
     if msg.video:
-        context.user_data.update({"media_type": "video", "file_id": msg.video.file_id})
+        context.user_data["media_type"] = "video"
+        context.user_data["file_id"] = msg.video.file_id
     elif msg.photo:
-        context.user_data.update({"media_type": "photo", "file_id": msg.photo[-1].file_id})
+        context.user_data["media_type"] = "photo"
+        context.user_data["file_id"] = msg.photo[-1].file_id
     elif msg.animation:
-        context.user_data.update({"media_type": "animation", "file_id": msg.animation.file_id})
+        context.user_data["media_type"] = "animation"
+        context.user_data["file_id"] = msg.animation.file_id
     else:
         await msg.reply_text("❌ Envía un video, foto o GIF.\n/cancelar para salir.")
         return ESPERANDO_VIDEO
-    await msg.reply_text(f"✅ Recibido.\n\n🔗 <b>Paso 2/4 — Link {BTN_OPCION1}</b>\n\nPega el link Linkvertise:\n\n/cancelar para salir.", parse_mode="HTML")
+    await msg.reply_text(f"✅ Video recibido.\n\n🔗 <b>Paso 2/4 — Link {BTN_OPCION1}</b>\n\nPega el link de Linkvertise:\n\n/cancelar para salir.", parse_mode="HTML")
     return ESPERANDO_LINK1
 
-async def senal_recibir_link1(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def senal_recibir_link1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     link = update.message.text.strip()
     if not link.startswith("http"):
         await update.message.reply_text("❌ Link inválido.\n/cancelar para salir.")
         return ESPERANDO_LINK1
     context.user_data["link1"] = link
-    await update.message.reply_text(f"✅ Link 1 guardado.\n\n🔗 <b>Paso 3/4 — Link {BTN_OPCION2}</b>\n\nPega el link Linkvertise:\n\n/cancelar para salir.", parse_mode="HTML")
+    await update.message.reply_text(f"✅ Link 1 guardado.\n\n🔗 <b>Paso 3/4 — Link {BTN_OPCION2}</b>\n\nPega el link de Linkvertise:\n\n/cancelar para salir.", parse_mode="HTML")
     return ESPERANDO_LINK2
 
-async def senal_recibir_link2(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def senal_recibir_link2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     link = update.message.text.strip()
     if not link.startswith("http"):
         await update.message.reply_text("❌ Link inválido.\n/cancelar para salir.")
@@ -129,7 +137,7 @@ async def senal_recibir_link2(update: Update, context: ContextTypes.DEFAULT_TYPE
     await update.message.reply_text("✏️ <b>Paso 4/4 — Descripción</b>\n\nEscribe el texto:\n\n/cancelar para salir.", parse_mode="HTML")
     return ESPERANDO_CAPTION
 
-async def senal_publicar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def senal_publicar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     caption    = update.message.text.strip()
     link1      = context.user_data["link1"]
     link2      = context.user_data["link2"]
@@ -148,14 +156,13 @@ async def senal_publicar(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.send_animation(chat_id=channel_id, animation=file_id, caption=full_caption, reply_markup=keyboard, parse_mode="HTML")
             publicados += 1
         except Exception as e:
-            logger.error(f"❌ Error en {channel_id}: {e}")
+            logger.error(f"❌ Error en canal {channel_id}: {e}")
     await update.message.reply_text(f"✅ <b>Publicado en {publicados}/{len(CHANNEL_IDS)} canales.</b>", parse_mode="HTML")
     context.user_data.clear()
     return ConversationHandler.END
 
 
-# ── /anuncio ───────────────────────────────────────────────
-async def anuncio_inicio(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def anuncio_inicio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.effective_user.id not in ADMIN_IDS:
         await update.message.reply_text("⛔ Sin permiso.")
         return ConversationHandler.END
@@ -163,21 +170,24 @@ async def anuncio_inicio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("📢 <b>Paso 1/2 — Video o imagen</b>\n\nEnvía el video o foto.\n\n/cancelar para salir.", parse_mode="HTML")
     return AN_VIDEO
 
-async def anuncio_recibir_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def anuncio_recibir_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     msg = update.message
     if msg.video:
-        context.user_data.update({"media_type": "video", "file_id": msg.video.file_id})
+        context.user_data["media_type"] = "video"
+        context.user_data["file_id"] = msg.video.file_id
     elif msg.photo:
-        context.user_data.update({"media_type": "photo", "file_id": msg.photo[-1].file_id})
+        context.user_data["media_type"] = "photo"
+        context.user_data["file_id"] = msg.photo[-1].file_id
     elif msg.animation:
-        context.user_data.update({"media_type": "animation", "file_id": msg.animation.file_id})
+        context.user_data["media_type"] = "animation"
+        context.user_data["file_id"] = msg.animation.file_id
     else:
         await msg.reply_text("❌ Envía un video, foto o GIF.\n/cancelar para salir.")
         return AN_VIDEO
     await msg.reply_text("✅ Recibido.\n\n✏️ <b>Paso 2/2 — Descripción</b>\n\nEscribe el texto:\n\n/cancelar para salir.", parse_mode="HTML")
     return AN_CAPTION
 
-async def anuncio_publicar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def anuncio_publicar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     caption    = update.message.text.strip()
     media_type = context.user_data["media_type"]
     file_id    = context.user_data["file_id"]
@@ -194,13 +204,13 @@ async def anuncio_publicar(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.send_animation(chat_id=channel_id, animation=file_id, caption=full_caption, reply_markup=keyboard, parse_mode="HTML")
             publicados += 1
         except Exception as e:
-            logger.error(f"❌ Error en {channel_id}: {e}")
+            logger.error(f"❌ Error en canal {channel_id}: {e}")
     await update.message.reply_text(f"✅ <b>Anuncio publicado en {publicados}/{len(CHANNEL_IDS)} canales.</b>", parse_mode="HTML")
     context.user_data.clear()
     return ConversationHandler.END
 
 
-async def cancelar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def cancelar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.clear()
     await update.message.reply_text("❌ Cancelado.")
     return ConversationHandler.END
@@ -219,14 +229,13 @@ async def ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_admin = update.effective_user.id in ADMIN_IDS
     text = f"<b>📖 {BOT_NAME}</b>\n\n/start — Bienvenida\n/menu — Menú\n/ayuda — Comandos\n"
     if is_admin:
-        text += "\n🔑 <b>Admin:</b>\n/senal — Video con 4 botones\n/anuncio — Preview VIP\n/cancelar — Cancelar\n"
+        text += "\n🔑 <b>Admin:</b>\n/senal — Publicar video con 4 botones\n/anuncio — Publicar preview VIP\n/cancelar — Cancelar\n"
     await update.message.reply_text(text, parse_mode="HTML")
 
 
 def main():
-    # Inicia el servidor de salud en hilo separado
     threading.Thread(target=run_health_server, daemon=True).start()
-    logger.info("🌐 Health server corriendo en puerto 8080")
+    logger.info("🌐 Health server en puerto 8080")
 
     app = Application.builder().token(BOT_TOKEN).build()
 
