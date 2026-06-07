@@ -4,6 +4,7 @@ Bot de Telegram — Publica video con botones directo en canales
 
 import logging
 import threading
+import requests
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice
 from telegram.ext import (
@@ -24,6 +25,8 @@ logger = logging.getLogger(__name__)
 (ESPERANDO_VIDEO, ESPERANDO_LINK1, ESPERANDO_LINK2, ESPERANDO_CAPTION) = range(4)
 (AN_VIDEO, AN_CAPTION) = range(4, 6)
 
+RENDER_URL = "https://bot-botones-q65f.onrender.com"
+
 
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -36,6 +39,17 @@ class HealthHandler(BaseHTTPRequestHandler):
 def run_health_server():
     server = HTTPServer(("0.0.0.0", 8080), HealthHandler)
     server.serve_forever()
+
+def self_ping():
+    """Se autopingea cada 4 minutos para no dormirse."""
+    import time
+    while True:
+        time.sleep(240)
+        try:
+            requests.get(RENDER_URL, timeout=10)
+            logger.info("🔔 Self-ping OK")
+        except Exception as e:
+            logger.warning(f"⚠️ Self-ping falló: {e}")
 
 
 def build_keyboard(link1: str, link2: str) -> InlineKeyboardMarkup:
@@ -235,7 +249,8 @@ async def ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_health_server, daemon=True).start()
-    logger.info("🌐 Health server en puerto 8080")
+    threading.Thread(target=self_ping, daemon=True).start()
+    logger.info("🌐 Health server y self-ping iniciados")
 
     app = Application.builder().token(BOT_TOKEN).build()
 
