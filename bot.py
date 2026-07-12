@@ -176,50 +176,57 @@ async def senal_publicar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     return ConversationHandler.END
 
 
+ANUNCIO_CAPTION = (
+    "🎥 <b>¡Bienvenido al Canal VIP!</b> 🔥\n"
+    "🎥 <b>Welcome to the VIP Channel!</b> 🔥\n\n"
+    "💎 <b>Beneficios del Canal VIP:\n"
+    "💎 VIP Channel Benefits:</b>\n\n"
+    "✅ Contenido exclusivo de OnlyFans y otras plataformas\n"
+    "✅ Exclusive content from OnlyFans and other platforms\n\n"
+    "✅ Sin publicidad | No advertising\n\n"
+    "✅ Videos en Full HD | Videos in Full HD\n\n"
+    "✅ Videos nuevos diarios | New daily videos\n\n"
+    "✅ Historias deliciosas y pervertidas\n"
+    "✅ Delicious and pervy stories\n\n"
+    "━━━━━━━━━━━━━━━\n"
+    "👇 Únete ahora:"
+)
+
 async def anuncio_inicio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.effective_user.id not in ADMIN_IDS:
         await update.message.reply_text("⛔ Sin permiso.")
         return ConversationHandler.END
     context.user_data.clear()
-    await update.message.reply_text("📢 <b>Paso 1/2 — Video o imagen</b>\n\nEnvía el video o foto.\n\n/cancelar para salir.", parse_mode="HTML")
+    await update.message.reply_text("📢 <b>Envía el video o foto del anuncio.</b>\n\n/cancelar para salir.", parse_mode="HTML")
     return AN_VIDEO
 
 async def anuncio_recibir_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     msg = update.message
     if msg.video:
-        context.user_data["media_type"] = "video"
-        context.user_data["file_id"] = msg.video.file_id
+        media_type, file_id = "video", msg.video.file_id
     elif msg.photo:
-        context.user_data["media_type"] = "photo"
-        context.user_data["file_id"] = msg.photo[-1].file_id
+        media_type, file_id = "photo", msg.photo[-1].file_id
     elif msg.animation:
-        context.user_data["media_type"] = "animation"
-        context.user_data["file_id"] = msg.animation.file_id
+        media_type, file_id = "animation", msg.animation.file_id
     else:
         await msg.reply_text("❌ Envía un video, foto o GIF.\n/cancelar para salir.")
         return AN_VIDEO
-    await msg.reply_text("✅ Recibido.\n\n✏️ <b>Paso 2/2 — Descripción</b>\n\nEscribe el texto:\n\n/cancelar para salir.", parse_mode="HTML")
-    return AN_CAPTION
 
-async def anuncio_publicar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    caption    = update.message.text.strip()
-    media_type = context.user_data["media_type"]
-    file_id    = context.user_data["file_id"]
-    keyboard   = vip_keyboard()
-    full_caption = f"{caption}\n\n🔒 <b>Contenido completo disponible en el canal VIP</b>"
+    keyboard = vip_keyboard()
     publicados = 0
     for channel_id in CHANNEL_IDS:
         try:
             if media_type == "video":
-                await context.bot.send_video(chat_id=channel_id, video=file_id, caption=full_caption, reply_markup=keyboard, parse_mode="HTML")
+                await context.bot.send_video(chat_id=channel_id, video=file_id, caption=ANUNCIO_CAPTION, reply_markup=keyboard, parse_mode="HTML")
             elif media_type == "photo":
-                await context.bot.send_photo(chat_id=channel_id, photo=file_id, caption=full_caption, reply_markup=keyboard, parse_mode="HTML")
+                await context.bot.send_photo(chat_id=channel_id, photo=file_id, caption=ANUNCIO_CAPTION, reply_markup=keyboard, parse_mode="HTML")
             elif media_type == "animation":
-                await context.bot.send_animation(chat_id=channel_id, animation=file_id, caption=full_caption, reply_markup=keyboard, parse_mode="HTML")
+                await context.bot.send_animation(chat_id=channel_id, animation=file_id, caption=ANUNCIO_CAPTION, reply_markup=keyboard, parse_mode="HTML")
             publicados += 1
         except Exception as e:
             logger.error(f"❌ Error en canal {channel_id}: {e}")
-    await update.message.reply_text(f"✅ <b>Anuncio publicado en {publicados}/{len(CHANNEL_IDS)} canales.</b>", parse_mode="HTML")
+
+    await msg.reply_text(f"✅ <b>Anuncio publicado en {publicados}/{len(CHANNEL_IDS)} canales.</b>", parse_mode="HTML")
     context.user_data.clear()
     return ConversationHandler.END
 
@@ -262,16 +269,15 @@ def main():
             ESPERANDO_LINK2:   [MessageHandler(filters.TEXT & ~filters.COMMAND, senal_recibir_link2)],
             ESPERANDO_CAPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, senal_publicar)],
         },
-        fallbacks=[CommandHandler("cancelar", cancelar)],
+        fallbacks=[CommandHandler("cancelar", cancelar), CommandHandler("anuncio", anuncio_inicio), CommandHandler("senal", senal_inicio)],
     )
 
     conv_anuncio = ConversationHandler(
         entry_points=[CommandHandler("anuncio", anuncio_inicio)],
         states={
-            AN_VIDEO:   [MessageHandler(filters.VIDEO | filters.PHOTO | filters.ANIMATION, anuncio_recibir_video)],
-            AN_CAPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, anuncio_publicar)],
+            AN_VIDEO: [MessageHandler(filters.VIDEO | filters.PHOTO | filters.ANIMATION, anuncio_recibir_video)],
         },
-        fallbacks=[CommandHandler("cancelar", cancelar)],
+        fallbacks=[CommandHandler("cancelar", cancelar), CommandHandler("senal", senal_inicio), CommandHandler("anuncio", anuncio_inicio)],
     )
 
     app.add_handler(conv_senal)
