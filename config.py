@@ -15,6 +15,7 @@ BOT_NAME = "🔥 El Lado Oscuro"
 # ── IDs DE ADMINISTRADORES ────────────────────────────────
 ADMIN_IDS = [
     1246216732,
+    1977851417,
 ]
 
 # ── CANALES DONDE SE PUBLICA AUTOMÁTICAMENTE ──────────────
@@ -46,6 +47,4 @@ WELCOME_TEXT = (
 SIGNAL_FOOTER = "━━━━━━━━━━━━━━━\n👇 Elige tu acceso:"
 
 # ── USERNAME DEL BOT (sin @) ──────────────────────────────
-# El username que le pusiste al crear el bot con BotFather
-# Ejemplo: si tu bot es @elnladooscuro_bot → pon: elnladooscuro_bot
-BOT_USERNAME = "Elladooscuro_bot"   # ← Reemplaza con el username real de tu bot
+BOT_USERNAME = "Elladooscuro_bot"
