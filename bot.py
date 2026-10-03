@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 (ESPERANDO_VIDEO, ESPERANDO_LINK1, ESPERANDO_LINK2, ESPERANDO_CAPTION) = range(4)
 (AN_VIDEO, AN_CAPTION) = range(4, 6)
 
-RENDER_URL = "https://bot-botones-q65f.onrender.com"
+RENDER_URL = "https://bot-botones-akox.onrender.com"
 
 
 class HealthHandler(BaseHTTPRequestHandler):
